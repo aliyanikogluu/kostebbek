@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KÖSTEBEK: Yalanlar & Sırlar</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0F172A',
+                        cardBg: '#1E293B',
+                        accentGold: '#F59E0B',
+                        accentRed: '#EF4444',
+                        accentPurple: '#8B5CF6'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <style>
+        body {
+            background-color: #0F172A;
+            color: #F8FAFC;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .mole-card {
+            background: linear-gradient(135deg, #312E81, #1E1B4B);
+            border: 2px solid #8B5CF6;
+        }
+        .innocent-card {
+            background: linear-gradient(135deg, #065F46, #064E3B);
+            border: 2px solid #10B981;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Header Navigation -->
+    <header class="bg-[#1E293B] border-b border-slate-800 p-4 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-user-ninja text-2xl text-purple-400"></i>
+                <h1 class="text-xl font-black tracking-wider text-white">KÖSTEBEK</h1>
+            </div>
+            <div id="roomCodeBadge" class="hidden bg-slate-800 text-purple-400 font-mono text-sm px-3 py-1 rounded-full border border-purple-500/30 flex items-center gap-2">
+                <span>Oda: <strong id="badgeCode" class="text-white">----</strong></span>
+                <button type="button" onclick="copyRoomLink()" title="Davet Linkini Kopyala" class="hover:text-white transition">
+                    <i class="fa-regular fa-copy"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-md w-full mx-auto p-4 flex-1 flex flex-col justify-center">
+
+        <!-- LOBBY SCREEN -->
+        <div id="lobbyScreen" class="bg-[#1E293B] p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <h2 class="text-2xl font-bold text-white">Yalanlar & Sırlar</h2>
+                <p class="text-sm text-slate-400">Kim gerçek anısını anlatıyor, kim yalan uyduruyor? Köstebek'i bulun veya kusursuz blöf yapın!</p>
+            </div>
+
+            <!-- Player Name -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">OYUNCU ADINIZ</label>
+                <input type="text" id="playerNameInput" placeholder="Takma adınızı yazın..." maxlength="15" 
+                    class="w-full bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition">
+            </div>
+
+            <!-- Tabs: Create or Join -->
+            <div class="flex bg-[#0F172A] p-1 rounded-xl border border-slate-800">
+                <button id="tabCreateBtn" type="button" onclick="switchTab('create')" class="flex-1 py-2 rounded-lg text-sm font-semibold transition bg-purple-600 text-white">Oda Kur</button>
+                <button id="tabJoinBtn" type="button" onclick="switchTab('join')" class="flex-1 py-2 rounded-lg text-sm font-semibold transition text-slate-400">Odaya Katıl</button>
+            </div>
+
+            <!-- TAB 1: CREATE ROOM -->
+            <div id="createRoomPanel" class="space-y-4">
+                <button id="createRoomBtn" type="button" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95">
+                    <i class="fa-solid fa-plus"></i> Yeni Oda Oluştur
+                </button>
+            </div>
+
+            <!-- TAB 2: JOIN ROOM -->
+            <div id="joinRoomPanel" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">ODA KODU</label>
+                    <input type="text" id="joinCodeInput" placeholder="4 Haneli Oda Kodu" maxlength="4" class="w-full uppercase bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition tracking-widest text-center font-mono text-lg">
+                </div>
+                <button id="joinRoomBtn" type="button" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95">
+                    <i class="fa-solid fa-right-to-bracket"></i> Odaya Katıl
+                </button>
+            </div>
+        </div>
+
+        <!-- WAITING LOBBY -->
+        <div id="waitingLobbyScreen" class="bg-[#1E293B] p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-6 hidden">
+            <div class="text-center space-y-1">
+                <span class="text-xs text-purple-400 font-semibold tracking-wider uppercase">OYUN LOBİSİ</span>
+                <h2 id="lobbyCodeDisplay" class="text-3xl font-black text-white font-mono">----</h2>
+                <button type="button" onclick="copyRoomLink()" class="text-xs text-slate-400 hover:text-purple-400 underline mt-1 inline-block cursor-pointer">
+                    <i class="fa-regular fa-copy"></i> Davet Linkini Kopyala
+                </button>
+            </div>
+
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-semibold text-slate-400">OYUNCULAR (EN AZ 3 KİŞİ)</span>
+                    <span id="playerCountBadge" class="text-xs bg-slate-800 text-purple-400 px-2 py-0.5 rounded">0 Oyuncu</span>
+                </div>
+                <div id="playersList" class="bg-[#0F172A] rounded-xl p-3 border border-slate-800 divide-y divide-slate-800 max-h-48 overflow-y-auto">
+                    <!-- Dynamic Player List -->
+                </div>
+            </div>
+
+            <div id="hostControls" class="space-y-3 hidden">
+                <button type="button" onclick="handleStartGame()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95">
+                    <i class="fa-solid fa-play"></i> Oyunu Başlat
+                </button>
+            </div>
+            <div id="guestNotice" class="text-center text-sm text-slate-400 animate-pulse hidden">
+                Oyun kurucunun turu başlatması bekleniyor...
+            </div>
+        </div>
+
+        <!-- GAMEPLAY SCREEN: SECRET ROLE & QUESTION -->
+        <div id="gameplayScreen" class="bg-[#1E293B] p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-6 hidden">
+            <div class="text-center space-y-1">
+                <span class="text-xs text-purple-400 font-semibold uppercase tracking-wider">GİZLİ ROLÜNÜZ VE SORUNUZ</span>
+                <h2 class="text-xl font-bold text-white">Turu Dinleyin & Anlatın!</h2>
+            </div>
+
+            <!-- Secret Card Display -->
+            <div id="roleCard" class="p-6 rounded-2xl text-center space-y-4 shadow-xl transition-all">
+                <div id="roleIcon" class="text-4xl"></div>
+                <h3 id="roleTitle" class="text-2xl font-black uppercase tracking-wide"></h3>
+                <p id="roleDescription" class="text-sm leading-relaxed"></p>
+            </div>
+
+            <!-- Interrogation Timer & Discussion Controls -->
+            <div class="bg-[#0F172A] p-4 rounded-xl border border-slate-800 text-center space-y-2">
+                <div class="text-xs text-slate-400 uppercase font-semibold">TARTIŞMA VE SORGU SÜRESİ</div>
+                <div id="discussionTimer" class="text-3xl font-black font-mono text-purple-400">02:00</div>
+                <p class="text-xs text-slate-500">Sırayla anılarınızı anlatın ve ardından birbirinize detay soruları sorun!</p>
+            </div>
+
+            <div id="hostVotingTriggerBox" class="hidden">
+                <button type="button" onclick="triggerVotingPhase()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95">
+                    <i class="fa-solid fa-check-to-slot"></i> Oylama Etabına Geç
+                </button>
+            </div>
+        </div>
+
+        <!-- VOTING SCREEN -->
+        <div id="votingScreen" class="bg-[#1E293B] p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-6 hidden">
+            <div class="text-center space-y-1">
+                <i class="fa-solid fa-user-secret text-4xl text-red-500"></i>
+                <h2 class="text-2xl font-black text-white">Sizce Köstebek Kim?</h2>
+                <p class="text-xs text-slate-400">Yalan söylediğini düşündüğünüz oyuncuya oy verin!</p>
+            </div>
+
+            <div id="votingButtonsList" class="space-y-2">
+                <!-- Dynamic Player Vote Buttons -->
+            </div>
+            
+            <div id="votedNotice" class="text-center text-sm text-green-400 font-semibold hidden">
+                <i class="fa-solid fa-circle-check"></i> Oyunuz alındı! Diğer oyuncular bekleniyor...
+            </div>
+        </div>
+
+        <!-- MOLE REVEAL SCREEN -->
+        <div id="moleRevealScreen" class="bg-[#1E293B] p-6 rounded-2xl border border-slate-800 shadow-2xl text-center space-y-6 hidden">
+            <div class="space-y-2">
+                <span class="text-xs text-red-400 font-bold uppercase">OYLAMA SONUCU</span>
+                <h2 id="eliminatedPlayerName" class="text-2xl font-black text-white">----</h2>
+                <p id="moleIdentityResult" class="text-sm font-semibold"></p>
+            </div>
+
+            <div id="hostNextRoundBox" class="hidden pt-2">
+                <button type="button" onclick="handleStartGame()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95">
+                    Sonraki Tura Geç <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-3 text-center text-xs text-slate-600 border-t border-slate-900">
+        KÖSTEBEK &copy; 2026 - Sosyal Party Oyunu
+    </footer>
+
+    <!-- GAME LOGIC SCRIPT -->
+    <script>
+        // PUBLIC FIREBASE CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyD0x9K7M3N2P5Q8R1S4T7U0V3W6X9Y2Z1A",
+            authDomain: "kostebek-yalanlar.firebaseapp.com",
+            projectId: "kostebek-yalanlar",
+            storageBucket: "kostebek-yalanlar.appspot.com",
+            messagingSenderId: "987654321012",
+            appId
